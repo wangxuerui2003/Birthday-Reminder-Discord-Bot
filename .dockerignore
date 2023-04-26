@@ -1,0 +1,4 @@
+bot_env/
+README.md
+.gitignore
+docker-compose.yml
