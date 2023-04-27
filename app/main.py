@@ -1,26 +1,38 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.interactions import Interaction
-from discord.ui import Modal, TextInput
+from discord.ui import Modal, TextInput, Button, View
+import mysql.connector
 import datetime
 import dotenv
 from pathlib import Path
 import os
 import certifi
-import asyncio
+import db_operations
 
+# Validate ssl certificate
 os.environ["SSL_CERT_FILE"] = certifi.where()
 
+# Load environment variables in the .env file
 dotenv.load_dotenv(Path('../.env'))
 
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+# Init DB
+db_conn = mysql.connector.connect(
+    host='localhost',
+    user=os.getenv('MYSQL_USER'),
+    password=os.getenv('MYSQL_PASSWORD'),
+    database=os.getenv('MYSQL_DATABASE')
+)
+db = db_operations.DbOperator(db_conn)
 
 
 class BirthdayModal(Modal, title="Birthday Reminder"):
+    '''
+        A Modal (form) for users to enter their birthday
+        Format: mm/dd/yyyy
+    '''
     answer = TextInput(
-        label="Enter your birthday (dd/mm/yyyy) | (Enter 0000 for anonymous birthyear)",
+        label="Enter your birthday (dd/mm/yyyy) ",
         style=discord.TextStyle.short,
         placeholder="21/11/2003",
         required=True,
@@ -28,29 +40,67 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
         min_length=10
     )
 
-    async def on_submit(self, interaction: Interaction[ClientT]) -> Coroutine[Any, Any, None]:
-        return await super().on_submit(interaction)
+    async def on_submit(self, interaction: Interaction):
+        if db.birthday_exists(interaction.user): # todo
+            await interaction.response.send_message(f"{interaction.user.mention} You have already set your birthday!", ephemeral=True)
+
+        try:
+            birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y')
+            embed = discord.Embed(
+                title=self.title, description=f"**{self.answer.label}**\n{self.answer}", timestamp=datetime.datetime.now(), color=discord.Colour.blue())
+            embed.set_author(name=interaction.user,
+                            icon_url=interaction.user.avatar)
+            db.store_birthday(birthday) # todo
+            check_birthday()
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message(f"{interaction.user.mention} Invalid birthday format!", ephemeral=True)
+     
+
+
+# Init Bot
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
 
 
 @bot.command()
 async def set_birthday(ctx):
-    def check(message):
-        try:
-            birthday = datetime.datetime.strptime(message.content, '%m/%d/%Y')
-            return True
-        except Exception as e:
-            print(e)
-            return False
+    async def send_modal_callback(interaction: Interaction):
+        await interaction.response.send_modal(BirthdayModal())
+    
+    button = Button(label="Click me!", custom_id="my_button", style=discord.ButtonStyle.green)
+    button.callback = send_modal_callback
+    view = View()
+    view.add_item(button)
+    await ctx.send(view=view)
 
-    # text_input = TextInput(label="birthday")
-    # await ctx.send('Plase enter some text:')
-    # input_msg = await ctx.send(embed=discord.Embed(title="Enter some text:"))
-    # try:
-    #     input_text = await bot.wait_for('message', check=check, timeout=30)
-    #     await input_msg.delete()
-    #     await input_text.reply(f'You entered: {input_text.content}')
-    # except asyncio.TimeoutError:
-    #     await input_msg.delete()
-    #     await ctx.send('You took too long to enter text.')
+
+def check_birthday(): # todo
+    # birthdays = db.get_birthdays()
+    # for birthday in birthdays:
+    #     if today_birthday(birthday):
+    #         # TODO: send happy birthday meme to the desired channel
+    #     elif tmr_birthday(birthday):
+    #         # TODO: send birthday reminder to the desired channel
+    pass
+
+
+@tasks.loop(seconds=5)
+async def background_check_birthday():
+    global last_birthday_check
+
+    if last_birthday_check == datetime.date.today() - datetime.timedelta(days=1):  # If last check is yesterday
+        last_birthday_check = datetime.date.today() # Change last check to today
+        check_birthday()
+
+
+@bot.event
+async def on_ready():
+    print(f"Bot logged in as {bot.user}!")
+    background_check_birthday.start()
+
+
+last_birthday_check = datetime.date.today() - datetime.timedelta(days=1)  # Init last check to yesterday
 
 bot.run(os.getenv('TOKEN'))
