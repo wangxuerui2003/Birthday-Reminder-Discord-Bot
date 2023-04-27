@@ -10,17 +10,20 @@ services:
       MYSQL_PORT: 3306
       MYSQL_USER: root
       MYSQL_PASSWORD: my-secret-pwd
-      MYSQL_DATABASE: discordbotDB
+      MYSQL_DATABASE: DiscordbotDB
     depends_on:
       - db
+    command: ["./wait-for-it.sh", "db:3306", "--", "python", "main.py"]
   db:
     image: mysql:8.0
     restart: always
     container_name: bot_database
     environment:
-      - MYSQL_ROOT_PASSWORD=my-secret-pwd
+      MYSQL_ROOT_PASSWORD: my-secret-pwd
     volumes:
       - db-data:/var/lib/mysql
+    expose:
+      - 3306
     ports:
       - 3306:3306
 
