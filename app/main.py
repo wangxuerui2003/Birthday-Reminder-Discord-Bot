@@ -5,7 +5,7 @@ from discord.ui import Modal, TextInput, Button, View
 from sqlalchemy import create_engine
 import datetime
 import dotenv
-from pathlib import Path
+# from pathlib import Path
 import os
 import asyncio
 import certifi
@@ -16,7 +16,7 @@ from birthdaydb import BirthdayDB
 os.environ["SSL_CERT_FILE"] = certifi.where()
 
 # Load environment variables in the .env file
-dotenv.load_dotenv(Path('../.env'))
+dotenv.load_dotenv()
 
 # Init DB
 db = BirthdayDB()

@@ -5,6 +5,11 @@ import os
 
 class BirthdayDB():
 	def __init__(self):
+		self.db_user = os.getenv('MYSQL_USER')
+		self.db_pwd = os.getenv('MYSQL_PASSWORD')
+		self.db_host = os.getenv('MYSQL_HOST')
+		self.db_port = os.getenv('MYSQL_PORT')
+		self.db_name = os.getenv('MYSQL_DATABASE')
 		self.connect_db()
 		self.create_table()
 
@@ -20,14 +25,14 @@ class BirthdayDB():
 			self.con.execute(query)
 
 	def connect_db(self):
-		self.engine = create_engine('mysql+mysqlconnector://root:my-secret-pwd@localhost:3306/DiscordbotDB')
+		self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
 
 		try:
 			self.con = self.engine.connect()
 		except ProgrammingError as e:
 			print(e)
 			self.engine.dispose() # dispose the previous engine since the database doesn't exist
-			self.engine = create_engine('mysql+mysqlconnector://root:my-secret-pwd@localhost:3306/mysql') # connect to a for sure db first
+			self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/mysql') # connect to a for sure db first
 			con = self.engine.connect() # setup connection
 			with open('./db_queries/createdb.sql', 'r') as f: # execute the createdb.sql query
 				query = text(f.read())
@@ -35,7 +40,7 @@ class BirthdayDB():
 			self.engine.dispose() # dispose the useless engine again
 
 			# create the final engine and connection
-			self.engine = create_engine('mysql+mysqlconnector://root:my-secret-pwd@localhost:3306/DiscordbotDB')
+			self.engine = self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
 			self.con = self.engine.connect()
 
 
