@@ -44,3 +44,7 @@ $ python main.py
 - Docker
 
 ## How to use
+1. First create a discord bot and give it channel and message related access
+2. Invite your bot into the server you have admin access on
+3. Copy the bot token and channel id that you want your bot runs on and follows the steps above to setup
+4. Run the bot, and enjoy!
