@@ -2,13 +2,15 @@ import discord
 from discord.ext import commands, tasks
 from discord.interactions import Interaction
 from discord.ui import Modal, TextInput, Button, View
-import mysql.connector
+from sqlalchemy import create_engine
 import datetime
 import dotenv
 from pathlib import Path
 import os
+import asyncio
 import certifi
-import db_operations
+from birthdaydb import BirthdayDB
+
 
 # Validate ssl certificate
 os.environ["SSL_CERT_FILE"] = certifi.where()
@@ -17,13 +19,7 @@ os.environ["SSL_CERT_FILE"] = certifi.where()
 dotenv.load_dotenv(Path('../.env'))
 
 # Init DB
-db_conn = mysql.connector.connect(
-    host='localhost',
-    user=os.getenv('MYSQL_USER'),
-    password=os.getenv('MYSQL_PASSWORD'),
-    database=os.getenv('MYSQL_DATABASE')
-)
-db = db_operations.DbOperator(db_conn)
+db = BirthdayDB()
 
 
 class BirthdayModal(Modal, title="Birthday Reminder"):
@@ -41,22 +37,21 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
     )
 
     async def on_submit(self, interaction: Interaction):
-        if db.birthday_exists(interaction.user): # todo
+        if db.birthday_exists(interaction.user):
             await interaction.response.send_message(f"{interaction.user.mention} You have already set your birthday!", ephemeral=True)
+            return
 
         try:
-            birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y')
+            birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y').date()
             embed = discord.Embed(
-                title=self.title, description=f"**{self.answer.label}**\n{self.answer}", timestamp=datetime.datetime.now(), color=discord.Colour.blue())
+                title=self.title, description=f"{self.answer.label}\n**{self.answer}**", timestamp=datetime.datetime.now(), color=discord.Colour.blue())
             embed.set_author(name=interaction.user,
                             icon_url=interaction.user.avatar)
-            db.store_birthday(birthday) # todo
-            check_birthday()
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            db.store_birthday(birthday, interaction.user)
+            await check_birthday()
+            await interaction.response.send_message(embed=embed)
         except ValueError:
             await interaction.response.send_message(f"{interaction.user.mention} Invalid birthday format!", ephemeral=True)
-     
-
 
 # Init Bot
 intents = discord.Intents.default()
@@ -75,15 +70,29 @@ async def set_birthday(ctx):
     view.add_item(button)
     await ctx.send(view=view)
 
+def today_birthday(date):
+    today = datetime.date.today()
+    if today.month == date.month and today.day == date.day:
+        return True
+    return False
 
-def check_birthday(): # todo
-    # birthdays = db.get_birthdays()
-    # for birthday in birthdays:
-    #     if today_birthday(birthday):
-    #         # TODO: send happy birthday meme to the desired channel
-    #     elif tmr_birthday(birthday):
-    #         # TODO: send birthday reminder to the desired channel
-    pass
+def tmr_birthday(date):
+    tmr = datetime.date.today() + datetime.timedelta(days=1)
+    if tmr.month == date.month and tmr.day == date.day:
+        return True
+    return False
+
+async def check_birthday(): # todo
+    birthdays = db.get_birthdays()
+    for user_id, birthday in birthdays:
+        if today_birthday(birthday):
+            channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
+            user = await bot.fetch_user(int(user_id))
+            await channel.send(f"Happy Birthday! {user.mention}")
+        elif tmr_birthday(birthday):
+            channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
+            user = await bot.fetch_user(int(user_id))
+            await channel.send(f"Rememeber tomorrow is your birthday! {user.mention}")
 
 
 @tasks.loop(seconds=5)
@@ -92,7 +101,7 @@ async def background_check_birthday():
 
     if last_birthday_check == datetime.date.today() - datetime.timedelta(days=1):  # If last check is yesterday
         last_birthday_check = datetime.date.today() # Change last check to today
-        check_birthday()
+        await check_birthday()
 
 
 @bot.event
