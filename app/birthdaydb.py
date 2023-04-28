@@ -1,6 +1,6 @@
 import datetime
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError, InterfaceError
 import os
 
 class BirthdayDB():
@@ -10,12 +10,15 @@ class BirthdayDB():
 		self.db_host = os.getenv('MYSQL_HOST')
 		self.db_port = os.getenv('MYSQL_PORT')
 		self.db_name = os.getenv('MYSQL_DATABASE')
+		self.db_conn_success = True
 		self.connect_db()
-		self.create_table()
+		if self.db_conn_success:
+			self.create_table()
 
 	def __del__(self): # close connection and dispose engine in the destructor
-		self.con.close()
-		self.engine.dispose()
+		if self.db_conn_success:
+			self.con.close()
+			self.engine.dispose()
 	
 	def create_table(self):
 		if len(self.con.execute(text("SELECT * FROM information_schema.TABLES WHERE TABLE_NAME = 'Birthdays'")).fetchall()) > 0: # if table already exists
@@ -28,20 +31,23 @@ class BirthdayDB():
 		self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
 
 		try:
-			self.con = self.engine.connect()
-		except ProgrammingError as e:
-			print(e)
-			self.engine.dispose() # dispose the previous engine since the database doesn't exist
-			self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/mysql') # connect to a for sure db first
-			con = self.engine.connect() # setup connection
-			with open('./db_queries/createdb.sql', 'r') as f: # execute the createdb.sql query
-				query = text(f.read())
-				con.execute(query)
-			self.engine.dispose() # dispose the useless engine again
+			try:
+				self.con = self.engine.connect()
+			except ProgrammingError as e:
+				print(e)
+				self.engine.dispose() # dispose the previous engine since the database doesn't exist
+				self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/mysql') # connect to a for sure db first
+				con = self.engine.connect() # setup connection
+				with open('./db_queries/createdb.sql', 'r') as f: # execute the createdb.sql query
+					query = text(f.read())
+					con.execute(query)
+				self.engine.dispose() # dispose the useless engine again
 
-			# create the final engine and connection
-			self.engine = self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
-			self.con = self.engine.connect()
+				# create the final engine and connection
+				self.engine = self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
+				self.con = self.engine.connect()
+		except InterfaceError as e:
+			self.db_conn_success = False
 
 
 	def store_birthday(self, birthday, user):

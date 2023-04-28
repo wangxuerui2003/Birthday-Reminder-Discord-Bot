@@ -2,13 +2,13 @@ import discord
 from discord.ext import commands, tasks
 from discord.interactions import Interaction
 from discord.ui import Modal, TextInput, Button, View
-from sqlalchemy import create_engine
+from sqlalchemy.exc import InterfaceError
 import datetime
 import dotenv
-# from pathlib import Path
+import sys
 import os
-import asyncio
 import certifi
+
 from birthdaydb import BirthdayDB
 
 
@@ -20,7 +20,9 @@ dotenv.load_dotenv()
 
 # Init DB
 db = BirthdayDB()
-
+if not db.db_conn_success:
+    print("Can't connect to the database!", file=sys.stderr)
+    sys.exit()
 
 class BirthdayModal(Modal, title="Birthday Reminder"):
     '''
@@ -95,7 +97,7 @@ async def check_birthday(): # todo
             await channel.send(f"Rememeber tomorrow is your birthday! {user.mention}")
 
 
-@tasks.loop(seconds=5)
+@tasks.loop(hours=12)
 async def background_check_birthday():
     global last_birthday_check
 
