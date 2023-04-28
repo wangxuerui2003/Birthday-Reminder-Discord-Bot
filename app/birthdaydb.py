@@ -1,6 +1,7 @@
 import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError, InterfaceError
+from sqlalchemy.orm import sessionmaker
 import os
 
 class BirthdayDB():
@@ -14,6 +15,9 @@ class BirthdayDB():
 		self.connect_db()
 		if self.db_conn_success:
 			self.create_table()
+			self.SessionObj = sessionmaker(bind=self.engine)
+			self.session = self.SessionObj()
+
 
 	def __del__(self): # close connection and dispose engine in the destructor
 		if self.db_conn_success:
@@ -54,13 +58,17 @@ class BirthdayDB():
 		if self.birthday_exists(user):
 			return
 		query = text('INSERT INTO Birthdays (user_id, birthday) VALUES (:user_id, :birthday)')
-		self.con.execute(query, {'user_id': str(user.id), 'birthday': birthday})
-		self.con.commit()
+		self.session.execute(query, {'user_id': str(user.id), 'birthday': birthday})
+		self.session.commit()
 
 	def get_birthdays(self):
-		return self.con.execute(text('SELECT * from Birthdays')).fetchall()
+		self.session.expire_all()
+		self.session = self.SessionObj()
+		return self.session.execute(text('SELECT * from Birthdays')).fetchall()
 
 	def birthday_exists(self, user):
-		if len(self.con.execute(text('SELECT user_id from Birthdays WHERE user_id = :user_id'), {"user_id": str(user.id)}).fetchall()) > 0:
+		self.session.expire_all()
+		self.session = self.SessionObj()
+		if len(self.session.execute(text('SELECT user_id from Birthdays WHERE user_id = :user_id'), {"user_id": str(user.id)}).fetchall()) > 0:
 			return True
 		return False
