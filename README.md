@@ -48,3 +48,8 @@ $ python main.py
 2. Invite your bot into the server you have admin access on
 3. Copy the bot token and channel id that you want your bot runs on and follows the steps above to setup
 4. Run the bot, and enjoy!
+
+## Todo (For myself)
+- [ ] Send random Happy birthday meme while mentioning the birthday boy/girl.
+- [ ] Create a thread one day before someone's birthday dedicated for him/her, the thread will expire after 72 hours. And if some one just set their birthday on their birthday, create a thread as well.
+- [ ] List everyone's birthday by the ```!list_birthday``` command.
