@@ -50,6 +50,6 @@ $ python main.py
 4. Run the bot, and enjoy!
 
 ## Todo (For myself)
-- [ ] Send random Happy birthday meme while mentioning the birthday boy/girl.
-- [ ] Create a thread one day before someone's birthday dedicated for him/her, the thread will expire after 72 hours. And if some one just set their birthday on their birthday, create a thread as well.
-- [ ] List everyone's birthday by the ```!list_birthday``` command.
+- [x] Send random Happy birthday meme while mentioning the birthday boy/girl.
+- [x] Create a thread one day before someone's birthday dedicated for him/her, the thread will expire after 72 hours. And if some one just set their birthday on their birthday, create a thread as well.
+- [x] List everyone's birthday by the ```!list_birthday``` command.
