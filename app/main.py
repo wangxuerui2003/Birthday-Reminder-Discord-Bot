@@ -59,6 +59,9 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
         try:
             if self.answer.value.endswith('0000'):
                 birthday = datetime.datetime.strptime(self.answer.value[:5], '%d/%m').date()
+                if birthday.year >= datetime.datetime.now().year:
+                   await interaction.response.send_message(f"Don't born so late bro.", ephemeral=True)
+                   return
             else:
                 birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y').date()
             username = self.username.value
@@ -68,7 +71,7 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
             embed.set_author(name=interaction.user,
                             icon_url=interaction.user.avatar)
             db.store_birthday(username, birthday, interaction.user)
-            await check_birthday()
+            # await check_birthday()
             await interaction.response.send_message(embed=embed)
         except ValueError:
             await interaction.response.send_message(f"{interaction.user.mention} Invalid birthday format!", ephemeral=True)
@@ -140,7 +143,7 @@ async def check_birthday():
             await create_thread(message, username)
 
 
-@tasks.loop(hours=12)
+@tasks.loop(hours=24)
 async def background_check_birthday():
     global last_birthday_check
 
