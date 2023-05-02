@@ -1,5 +1,7 @@
 import discord
 from discord.ext import commands, tasks
+from discord.ext.commands.cog import Cog
+from discord.ext.commands.core import Command
 from discord.interactions import Interaction
 from discord.ui import Modal, TextInput, Button, View
 from sqlalchemy.exc import InterfaceError
@@ -8,7 +10,7 @@ import dotenv
 import sys
 import os
 import certifi
-from typing import Coroutine
+from typing import Any, Coroutine, List, Mapping, Optional
 
 from birthdaydb import BirthdayDB
 from helpers import *
@@ -25,6 +27,12 @@ dotenv.load_dotenv()
 db = BirthdayDB()
 if not db.db_conn_success:
     print("Can't connect to the database!", file=sys.stderr)
+    sys.exit()
+
+# Get the birthday channel id
+channel_id = int(os.getenv('CHANNEL_ID'))
+if not channel_id:
+    print("Channel ID not set.")
     sys.exit()
 
 class BirthdayModal(Modal, title="Birthday Reminder"):
@@ -76,18 +84,28 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
         except ValueError:
             await interaction.response.send_message(f"{interaction.user.mention} Invalid birthday format!", ephemeral=True)
 
+class MyHelpCommand(commands.DefaultHelpCommand):
+    async def send_bot_help(self, mapping):
+        channel: discord.TextChannel = self.get_destination()
+        if channel.id != channel_id:
+            return
+        
+        return await super().send_bot_help(mapping)
+
+
 # Init Bot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents, help_command=MyHelpCommand())
 
 
 @bot.command()
+@channel_only(channel_id)
 async def set_birthday(ctx: commands.context.Context):
     """
         Set your birthday, only once for each user.
     """
-
+    
     async def send_modal_callback(interaction: Interaction):
         await interaction.response.send_modal(BirthdayModal())
     
@@ -99,6 +117,7 @@ async def set_birthday(ctx: commands.context.Context):
 
 
 @bot.command()
+@channel_only(channel_id)
 async def list_birthdays(ctx: commands.context.Context):
     """
         List all recorded birthdays.

@@ -2,6 +2,7 @@ import datetime
 import discord
 from typing import Coroutine
 import pytz
+from discord.ext import commands
 
 def today_birthday(date) -> bool:
 	today: datetime.date = datetime.date.today()
@@ -26,6 +27,13 @@ async def delete_expired_threads(birthdays: list[tuple], channel: discord.TextCh
 		if thread.created_at < threshold_time:
 			await thread.delete()
 			await channel.send(f"Deleted thread {thread.name}.")
+
+
+def channel_only(channel_id: int):
+	def wrapper(ctx: commands.context.Context):
+		return ctx.channel.id == channel_id
+	
+	return commands.check(wrapper)
 
 
 # Init last check to yesterday
