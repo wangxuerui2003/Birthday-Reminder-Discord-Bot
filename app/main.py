@@ -10,6 +10,8 @@ import os
 import certifi
 
 from birthdaydb import BirthdayDB
+from helpers import *
+
 
 
 # Validate ssl certificate
@@ -29,8 +31,17 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
         A Modal (form) for users to enter their birthday
         Format: mm/dd/yyyy
     '''
+    username = TextInput(
+        label="Your name (real name or nickname)",
+        style=discord.TextStyle.short,
+        placeholder="John Doe",
+        max_length=20,
+        min_length=2,
+        required=True
+    )
+
     answer = TextInput(
-        label="Enter your birthday (dd/mm/yyyy) ",
+        label="Birthday (dd/mm/yyyy 0000 for anonymous year)",
         style=discord.TextStyle.short,
         placeholder="21/11/2003",
         required=True,
@@ -44,12 +55,17 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
             return
 
         try:
-            birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y').date()
+            if self.answer.value.endswith('0000'):
+                birthday = datetime.datetime.strptime(self.answer.value[:5], '%d/%m').date()
+            else:
+                birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y').date()
+            username = self.username.value
+            # year_anonymous = [True, False][birthday.year == 0]
             embed = discord.Embed(
                 title=self.title, description=f"{self.answer.label}\n**{self.answer}**", timestamp=datetime.datetime.now(), color=discord.Colour.blue())
             embed.set_author(name=interaction.user,
                             icon_url=interaction.user.avatar)
-            db.store_birthday(birthday, interaction.user)
+            db.store_birthday(username, birthday, interaction.user)
             await check_birthday()
             await interaction.response.send_message(embed=embed)
         except ValueError:
@@ -63,6 +79,10 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.command()
 async def set_birthday(ctx):
+    """
+        Set your birthday, only once for each user.
+    """
+
     async def send_modal_callback(interaction: Interaction):
         await interaction.response.send_modal(BirthdayModal())
     
@@ -72,29 +92,45 @@ async def set_birthday(ctx):
     view.add_item(button)
     await ctx.send(view=view)
 
-def today_birthday(date):
-    today = datetime.date.today()
-    if today.month == date.month and today.day == date.day:
-        return True
-    return False
 
-def tmr_birthday(date):
-    tmr = datetime.date.today() + datetime.timedelta(days=1)
-    if tmr.month == date.month and tmr.day == date.day:
-        return True
-    return False
+@bot.command()
+async def list_birthdays(ctx):
+    """
+        List all recorded birthdays.
+    """
 
-async def check_birthday(): # todo
+    list_of_birthdays = ""
     birthdays = db.get_birthdays()
-    for user_id, birthday in birthdays:
+
+    if not birthdays:
+        return
+    
+    for user_id, username, birthday in birthdays:
+        guild = bot.guilds[0]
+        member = await guild.fetch_member(int(user_id))
+        list_of_birthdays += f"User \"{member.nick}\": {username}'s birthday is on {str(birthday.day).zfill(2)}/{str(birthday.month).zfill(2)}\n"
+
+    if list_of_birthdays != "":
+        await ctx.send(list_of_birthdays)
+
+
+async def check_birthday():
+
+    birthdays = db.get_birthdays()
+    channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
+
+    await delete_expired_threads(birthdays, channel)
+
+    for user_id, username, birthday in birthdays:
         if today_birthday(birthday):
-            channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
             user = await bot.fetch_user(int(user_id))
-            await channel.send(f"Happy Birthday! {user.mention}")
+            message = await channel.send(f"Happy Birthday {username}! {user.mention}")
+            # message.channel.threads[0].name
+            await create_thread(message, username)
         elif tmr_birthday(birthday):
-            channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
             user = await bot.fetch_user(int(user_id))
-            await channel.send(f"Rememeber tomorrow is your birthday! {user.mention}")
+            message = await channel.send(f"Rememeber tomorrow is your birthday {username}! {user.mention}")
+            await create_thread(message, username)
 
 
 @tasks.loop(hours=12)
@@ -111,7 +147,5 @@ async def on_ready():
     print(f"Bot logged in as {bot.user}!")
     background_check_birthday.start()
 
-
-last_birthday_check = datetime.date.today() - datetime.timedelta(days=1)  # Init last check to yesterday
 
 bot.run(os.getenv('TOKEN'))
