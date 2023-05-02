@@ -8,10 +8,11 @@ import dotenv
 import sys
 import os
 import certifi
+from typing import Coroutine
 
 from birthdaydb import BirthdayDB
 from helpers import *
-
+from get_happybirthday_meme import get_random_birthday_meme
 
 
 # Validate ssl certificate
@@ -31,6 +32,7 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
         A Modal (form) for users to enter their birthday
         Format: mm/dd/yyyy
     '''
+
     username = TextInput(
         label="Your name (real name or nickname)",
         style=discord.TextStyle.short,
@@ -49,7 +51,7 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
         min_length=10
     )
 
-    async def on_submit(self, interaction: Interaction):
+    async def on_submit(self, interaction: Interaction) -> Coroutine:
         if db.birthday_exists(interaction.user):
             await interaction.response.send_message(f"{interaction.user.mention} You have already set your birthday!", ephemeral=True)
             return
@@ -62,7 +64,7 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
             username = self.username.value
             # year_anonymous = [True, False][birthday.year == 0]
             embed = discord.Embed(
-                title=self.title, description=f"{self.answer.label}\n**{self.answer}**", timestamp=datetime.datetime.now(), color=discord.Colour.blue())
+                title=self.title, description=f"{username}\n**{self.answer.value}**", timestamp=datetime.datetime.now(), color=discord.Colour.blue())
             embed.set_author(name=interaction.user,
                             icon_url=interaction.user.avatar)
             db.store_birthday(username, birthday, interaction.user)
@@ -78,7 +80,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 
 @bot.command()
-async def set_birthday(ctx):
+async def set_birthday(ctx: commands.context.Context):
     """
         Set your birthday, only once for each user.
     """
@@ -94,7 +96,7 @@ async def set_birthday(ctx):
 
 
 @bot.command()
-async def list_birthdays(ctx):
+async def list_birthdays(ctx: commands.context.Context):
     """
         List all recorded birthdays.
     """
@@ -115,17 +117,23 @@ async def list_birthdays(ctx):
 
 
 async def check_birthday():
+    """
+        Check all the birthdays for birthday today and tomorrow.
+    """
 
     birthdays = db.get_birthdays()
     channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
 
     await delete_expired_threads(birthdays, channel)
-
     for user_id, username, birthday in birthdays:
         if today_birthday(birthday):
             user = await bot.fetch_user(int(user_id))
             message = await channel.send(f"Happy Birthday {username}! {user.mention}")
-            # message.channel.threads[0].name
+            meme_url = get_random_birthday_meme()
+            if meme_url:
+                embed_meme = discord.Embed(title="Happy Birthday!")
+                embed_meme.set_image(url=meme_url)
+                await channel.send(embed=embed_meme)
             await create_thread(message, username)
         elif tmr_birthday(birthday):
             user = await bot.fetch_user(int(user_id))
