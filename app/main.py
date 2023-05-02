@@ -107,8 +107,9 @@ async def list_birthdays(ctx: commands.context.Context):
     if not birthdays:
         return
     
+    channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
+    guild = channel.guild
     for user_id, username, birthday in birthdays:
-        guild = bot.guilds[0]
         member = await guild.fetch_member(int(user_id))
         list_of_birthdays += f"User \"{member.nick}\": {username}'s birthday is on {str(birthday.day).zfill(2)}/{str(birthday.month).zfill(2)}\n"
 
