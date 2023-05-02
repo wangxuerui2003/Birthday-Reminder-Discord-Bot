@@ -178,6 +178,7 @@ async def on_ready():
 
 
 @bot.event
+@channel_only(channel_id)
 async def on_command_error(ctx: commands.context.Context, error):
     if isinstance(error, commands.CommandNotFound):
         await ctx.reply("Command not found.")
