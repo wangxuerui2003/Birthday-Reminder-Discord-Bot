@@ -1,6 +1,7 @@
 import datetime
 import discord
 from typing import Coroutine
+import pytz
 
 def today_birthday(date) -> bool:
 	today: datetime.date = datetime.date.today()
@@ -19,11 +20,8 @@ async def create_thread(message: discord.Message, birthday_star_name: str) -> Co
 	await message.channel.send(f"Created a thread for our birthday star {birthday_star_name}!")
 
 async def delete_expired_threads(birthdays: list[tuple], channel: discord.TextChannel) -> Coroutine[None, any, None]:
-	if not birthdays:
-		return
-
-	threshold_time: datetime.date = datetime.datetime.utcnow() - datetime.timedelta(minutes=1)
-	threads: list[discord.Thread] = channel.threads()
+	threshold_time: datetime.date = (datetime.datetime.now() - datetime.timedelta(hours=48)).replace(tzinfo=pytz.timezone('UTC'))
+	threads: list[discord.Thread] = channel.threads
 	for thread in threads:
 		if thread.created_at < threshold_time:
 			await thread.delete()
