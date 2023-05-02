@@ -1,4 +1,5 @@
 import datetime
+import sqlalchemy
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError, InterfaceError
 from sqlalchemy.orm import sessionmaker
@@ -32,7 +33,7 @@ class BirthdayDB():
 			self.con.execute(query)
 
 	def connect_db(self):
-		self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
+		self.engine: sqlalchemy.Engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
 
 		try:
 			try:
@@ -41,7 +42,7 @@ class BirthdayDB():
 				print(e)
 				self.engine.dispose() # dispose the previous engine since the database doesn't exist
 				self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/mysql') # connect to a for sure db first
-				con = self.engine.connect() # setup connection
+				con: sqlalchemy.Connection = self.engine.connect() # setup connection
 				with open('./db_queries/createdb.sql', 'r') as f: # execute the createdb.sql query
 					query = text(f.read())
 					con.execute(query)
@@ -54,11 +55,11 @@ class BirthdayDB():
 			self.db_conn_success = False
 
 
-	def store_birthday(self, birthday, user):
+	def store_birthday(self, username, birthday, user):
 		if self.birthday_exists(user):
 			return
-		query = text('INSERT INTO Birthdays (user_id, birthday) VALUES (:user_id, :birthday)')
-		self.session.execute(query, {'user_id': str(user.id), 'birthday': birthday})
+		query = text('INSERT INTO Birthdays (user_id, username, birthday) VALUES (:user_id, :username, :birthday)')
+		self.session.execute(query, {'user_id': str(user.id), 'username': username, 'birthday': birthday})
 		self.session.commit()
 
 	def get_birthdays(self):
