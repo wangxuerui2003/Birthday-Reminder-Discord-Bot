@@ -155,4 +155,10 @@ async def on_ready():
     background_check_birthday.start()
 
 
+@bot.event
+async def on_command_error(ctx: commands.context.Context, error):
+    if isinstance(error, commands.CommandNotFound):
+        await ctx.reply("Command not found.")
+
+
 bot.run(os.getenv('TOKEN'))
