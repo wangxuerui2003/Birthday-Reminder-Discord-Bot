@@ -22,5 +22,5 @@ def get_random_birthday_meme() -> Union[bool, str]:
 	if res.status_code != 200:
 		print(f"Fail to request from {res.url}")
 		return False
-	meme_embed_urls = [meme_info['embed_url'] for meme_info in json.loads(res.text)['data']]
+	meme_embed_urls = [meme_info['images']['original']['url'] for meme_info in json.loads(res.text)['data']]
 	return random.choice(meme_embed_urls)
