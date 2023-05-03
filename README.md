@@ -53,3 +53,4 @@ $ python main.py
 - [x] Send random Happy birthday meme while mentioning the birthday boy/girl.
 - [x] Create a thread one day before someone's birthday dedicated for him/her, the thread will expire after 72 hours. And if some one just set their birthday on their birthday, create a thread as well.
 - [x] List everyone's birthday by the ```!list_birthday``` command.
+- [ ] Change the database design and the bot logic so that one bot instance can be invited to multiple servers.

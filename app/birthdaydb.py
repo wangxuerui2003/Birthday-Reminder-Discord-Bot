@@ -5,6 +5,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError, InterfaceError
 from sqlalchemy.orm import sessionmaker
 import os
 import discord
+from typing import List
 
 class BirthdayDB():
 	def __init__(self):
@@ -16,24 +17,26 @@ class BirthdayDB():
 		self.db_conn_success = True
 		self.connect_db()
 		if self.db_conn_success:
-			self.create_table()
+			self.create_tables()
 			self.SessionObj = sessionmaker(bind=self.engine)
 			self.session = self.SessionObj()
-
 
 	def __del__(self): # close connection and dispose engine in the destructor
 		if self.db_conn_success:
 			self.con.close()
 			self.engine.dispose()
+
 	
-	def create_table(self) -> None:
+	def create_tables(self) -> None:
 		"""
 			Create the table the first time connected to the database.
 		"""
-
-		if len(self.con.execute(text("SELECT * FROM information_schema.TABLES WHERE TABLE_NAME = 'Birthdays'")).fetchall()) > 0: # if table already exists
+		if len(self.con.execute(text("SELECT * FROM information_schema.TABLES WHERE TABLE_NAME = 'Birthdays' OR TABLE_NAME = 'Servers'")).fetchall()) > 0: # if tables already exists
 			return
-		with open("./db_queries/createtable.sql", 'r') as f: # execute the createtable.sql query
+		with open("./db_queries/create_servers_table.sql", 'r') as f: # execute the create_servers_table.sql query
+			query = text(f.read())
+			self.con.execute(query)
+		with open("./db_queries/create_birthdays_table.sql", 'r') as f: # execute the create_birthdays_table.sql query
 			query = text(f.read())
 			self.con.execute(query)
 
@@ -44,7 +47,6 @@ class BirthdayDB():
 				If credentials are wrong or mysql server doesn't exist, then put db_conn_success to False and main.py will exit the program.
 				If database doesn'e exist, then create the database in the mysql server.
 		"""
-
 		self.engine: sqlalchemy.Engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
 		try:
 			try:
@@ -66,32 +68,58 @@ class BirthdayDB():
 			self.db_conn_success: bool = False
 
 
-	def store_birthday(self, username: str, birthday: datetime.date, user: str) -> None:
+	def store_birthday(self, username: str, birthday: datetime.date, user: str, server_id: int) -> None:
 		"""
 			Insert a row of birthday info into the database if the user haven't set his/her birthday yet.
 		"""
-
 		if self.birthday_exists(user):
 			return
-		query = text('INSERT INTO Birthdays (user_id, username, birthday) VALUES (:user_id, :username, :birthday)')
-		self.session.execute(query, {'user_id': str(user.id), 'username': username, 'birthday': birthday})
+		query = text('INSERT INTO Birthdays (user_id, username, birthday, server_id) VALUES (:user_id, :username, :birthday, :server_id)')
+		self.session.execute(query, {'user_id': str(user.id), 'username': username, 'birthday': birthday, 'server_id': server_id})
 		self.session.commit()
 
-	def get_birthdays(self) -> list[tuple]:
+	def get_birthdays(self) -> List[tuple]:
 		"""
 			Create a new db session to get up to date info and return a list of birthday info rows.
 		"""
-
 		self.session.expire_all()
 		self.session = self.SessionObj()
-		return self.session.execute(text('SELECT * from Birthdays')).fetchall()
+		return self.session.execute(text('SELECT * FROM Birthdays')).fetchall()
 
-	def birthday_exists(self, user: discord.User) -> bool:
+	def birthday_exists(self, user: discord.User, server_id: int) -> bool:
 		"""
 			If the number of rows returned when select user_id from Birthdays table is greater than 0,
 			means the user exists in the db, then return True. Else return False.
 		"""
-
 		self.session.expire_all()
 		self.session = self.SessionObj()
-		return len(self.session.execute(text('SELECT user_id from Birthdays WHERE user_id = :user_id'), {"user_id": str(user.id)}).fetchall()) > 0
+		return len(self.session.execute(text('SELECT user_id from Birthdays WHERE user_id = :user_id AND server_id = :server_id'), {"user_id": user.id, 'server_id': server_id}).fetchall()) > 0
+	
+	def get_servers(self) -> List[tuple]:
+		"""
+			Get all server and channel ids in the Server table.
+		"""
+		self.session.expire_all()
+		self.session = self.SessionObj()
+		return self.session.execute(text("SELECT * FROM Birthdays")).fetchall()
+	
+	def get_channelid_from_server(self, server_id: int):
+		"""
+			Get the corresponding channel_id using the server_id.
+		"""
+		self.session.expire_all()
+		self.session = self.SessionObj()
+		return self.session.execute(text("SELECT channel_id FROM Servers WHERE server_id = :server_id"), {'server_id': server_id}).fetchone()
+	
+	def create_new_server(self, server_id: int, channel_id: int):
+		"""
+			Insert a new row of server_id and channel_id to the Servers table.
+		"""
+		query = text('INSERT INTO Servers (server_id, channel_id) VALUES (:server_id, :channel_id)')
+		self.session.execute(query, {'server_id': server_id, 'channel_id': channel_id})
+		self.session.commit()
+
+	def delete_removed_servers_and_birthdays(self, server_id: int):
+		self.session.execute(text("DELETE FROM Servers WHERE server_id = :server_id"), {'server_id': server_id})
+		self.session.execute(text("DELETE FROM Birthdays WHERE server_id = :server_id"), {'server_id': server_id})
+		self.session.commit()
