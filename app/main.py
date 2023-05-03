@@ -162,7 +162,7 @@ async def check_birthday():
             await create_thread(message, username)
 
 
-@tasks.loop(hours=24)
+@tasks.loop(hours=1)
 async def background_check_birthday():
     global last_birthday_check
 
