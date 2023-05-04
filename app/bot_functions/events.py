@@ -5,8 +5,8 @@ from .background_tasks import *
 async def on_ready():
     print(f"Bot logged in as {bot.user}!")
     background_check_birthday.start()
-    background_delete_expired_threads.start()
     background_check_guilds.start()
+    background_delete_expired_threads.start()
 
 
 @bot.event
