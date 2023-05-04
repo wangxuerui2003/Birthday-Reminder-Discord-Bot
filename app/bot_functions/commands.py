@@ -41,7 +41,7 @@ async def list_birthdays(ctx: commands.context.Context):
 		nickname = member.nick
 		if not nickname:
 			user = await bot.fetch_user(int(user_id))
-			nickname = user.name + '(real name)'
+			nickname = user.name + '(discord name)'
 		strdate = convert_date_to_str(birthday)
 		embed.add_field(name=nickname, value=f"{username}'s birthday is on {strdate} \n", inline=False)
 
