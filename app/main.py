@@ -9,38 +9,32 @@ import os
 import certifi
 from typing import Any, Coroutine, List, Mapping, Optional
 
-from birthdaydb import BirthdayDB
-from BirthdayModal import BirthdayModal
-from helpers import *
-from get_happybirthday_meme import get_random_birthday_meme
-
-
 # Validate ssl certificate
 os.environ["SSL_CERT_FILE"] = certifi.where()
 
 # Load environment variables in the .env file
 dotenv.load_dotenv()
 
-# Init DB
-db = BirthdayDB()
-if not db.db_conn_success:
-    print("Can't connect to the database!", file=sys.stderr)
-    sys.exit()
+from birthdaydb import db
+from helpers import *
+from get_happybirthday_meme import get_random_birthday_meme
+from BirthdayModal import BirthdayModal
+
 
 # Get the server and channel ids
 servers = db.get_servers()
 guild_ids = [server[0] for server in servers]
 channel_ids = [server[1] for server in servers]
+print(channel_ids)
 
 
 class MyHelpCommand(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping):
         channel: discord.TextChannel = self.get_destination()
-        if channel.id not in channel_ids: # Only answer in the correct channels
+        if str(channel.id) not in channel_ids: # Only answer in the correct channels
             return
         
         return await super().send_bot_help(mapping)
-
 
 # Init Bot
 intents = discord.Intents.default()
@@ -76,6 +70,7 @@ async def list_birthdays(ctx: commands.context.Context):
     birthdays = db.get_birthdays()
 
     if not birthdays:
+        await ctx.send("No birthdays set yet.")
         return
     
     for user_id, username, birthday in birthdays:
@@ -86,13 +81,16 @@ async def list_birthdays(ctx: commands.context.Context):
         await ctx.send(list_of_birthdays)
 
 
-async def check_birthday(birthdays, channels) -> Coroutine: #todo
+async def check_birthday(birthdays, channels) -> Coroutine:
     """
         Check all the birthdays for birthday today and tomorrow.
     """
 
     for user_id, username, birthday, server_id in birthdays:
-        channel = db.get_channelid_in_server(db, server_id)
+        channel_id_tuple = db.get_channelid_from_server(server_id)
+        if channel_id_tuple:
+            channel_id = channel_id_tuple[0]
+        channel = discord.utils.get(bot.get_all_channels(), id=int(channel_id))
         if today_birthday(birthday):
             user = await bot.fetch_user(int(user_id))
             message = await channel.send(f"Happy Birthday {username}! {user.mention}")
@@ -116,8 +114,7 @@ async def background_check_birthday():
         last_birthday_check = datetime.date.today() # Change last check to today
 
         birthdays: List[tuple] = db.get_birthdays()
-        channels = [bot.get_channel(channel_id) for channel_id in channel_ids]
-        await delete_expired_threads(birthdays, channels)
+        channels = [bot.get_channel(int(channel_id)) for channel_id in channel_ids]
 
         await check_birthday(birthdays, channels)
 
@@ -125,7 +122,7 @@ async def background_check_birthday():
 @tasks.loop(hours=6)
 async def background_delete_expired_threads():
     birthdays: List[tuple] = db.get_birthdays()
-    channels = [bot.get_channel(channel_id) for channel_id in channel_ids]
+    channels = [bot.get_channel(int(channel_id)) for channel_id in channel_ids]
     await delete_expired_threads(birthdays, channels)
 
 
@@ -134,9 +131,9 @@ async def check_guilds():
     global guild_ids
 
     current_guilds = [guild for guild in bot.guilds]
-    current_guild_ids = [guild.id for guild in current_guilds]
+    current_guild_ids = [str(guild.id) for guild in current_guilds]
 
-    new_guilds = [guild for guild in current_guilds if guild.id not in guild_ids]
+    new_guilds = [guild for guild in current_guilds if str(guild.id) not in guild_ids]
     if new_guilds:
         for guild in new_guilds:
             await service_in_new_server(guild, db, bot)
@@ -146,15 +143,6 @@ async def check_guilds():
         for guild_id in removed_guild_ids:
             db.delete_removed_servers_and_birthdays(guild_id)
         guild_ids = current_guild_ids
-
-@bot.command()
-async def check_permissions(ctx):
-    member = ctx.guild.get_member(bot.user.id)
-    permissions = member.guild_permissions
-    if permissions.manage_channels:
-        await ctx.send("I have permission to manage channels.")
-    else:
-        await ctx.send("I do not have permission to manage channels.")
 
 @bot.event
 async def on_ready():
@@ -166,7 +154,7 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx: commands.context.Context, error):
-    if ctx.channel.id not in channel_ids:
+    if str(ctx.channel.id) not in channel_ids:
         return
 
     if isinstance(error, commands.CommandNotFound):

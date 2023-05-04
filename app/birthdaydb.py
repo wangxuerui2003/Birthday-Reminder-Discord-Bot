@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 import discord
 from typing import List
+import sys
 
 class BirthdayDB():
 	def __init__(self):
@@ -72,7 +73,7 @@ class BirthdayDB():
 		"""
 			Insert a row of birthday info into the database if the user haven't set his/her birthday yet.
 		"""
-		if self.birthday_exists(user):
+		if self.birthday_exists(user, server_id):
 			return
 		query = text('INSERT INTO Birthdays (user_id, username, birthday, server_id) VALUES (:user_id, :username, :birthday, :server_id)')
 		self.session.execute(query, {'user_id': str(user.id), 'username': username, 'birthday': birthday, 'server_id': server_id})
@@ -101,9 +102,9 @@ class BirthdayDB():
 		"""
 		self.session.expire_all()
 		self.session = self.SessionObj()
-		return self.session.execute(text("SELECT * FROM Birthdays")).fetchall()
+		return self.session.execute(text("SELECT * FROM Servers")).fetchall()
 	
-	def get_channelid_from_server(self, server_id: int):
+	def get_channelid_from_server(self, server_id: str) -> tuple:
 		"""
 			Get the corresponding channel_id using the server_id.
 		"""
@@ -111,7 +112,7 @@ class BirthdayDB():
 		self.session = self.SessionObj()
 		return self.session.execute(text("SELECT channel_id FROM Servers WHERE server_id = :server_id"), {'server_id': server_id}).fetchone()
 	
-	def create_new_server(self, server_id: int, channel_id: int):
+	def create_new_server(self, server_id: str, channel_id: str):
 		"""
 			Insert a new row of server_id and channel_id to the Servers table.
 		"""
@@ -123,3 +124,9 @@ class BirthdayDB():
 		self.session.execute(text("DELETE FROM Servers WHERE server_id = :server_id"), {'server_id': server_id})
 		self.session.execute(text("DELETE FROM Birthdays WHERE server_id = :server_id"), {'server_id': server_id})
 		self.session.commit()
+
+# Init DB
+db = BirthdayDB()
+if not db.db_conn_success:
+    print("Can't connect to the database!", file=sys.stderr)
+    sys.exit()
