@@ -30,7 +30,7 @@ async def list_birthdays(ctx: commands.context.Context):
 	"""
 
 	list_of_birthdays = ""
-	birthdays = db.get_birthdays_in_server(ctx.guild.id)
+	birthdays = db.get_sorted_birthdays_in_server(ctx.guild.id)
 
 	if not birthdays:
 		await ctx.send("No birthdays set yet.")
@@ -41,8 +41,11 @@ async def list_birthdays(ctx: commands.context.Context):
 			continue
 		server = bot.get_guild(int(server_id))
 		member = discord.utils.get(server.members, id=int(user_id))
-		# user = await bot.fetch_user(int(user_id))
-		list_of_birthdays += f"User \"{member.nick}\": {username}'s birthday is on {str(birthday.day).zfill(2)}/{str(birthday.month).zfill(2)}\n"
+		nickname = member.nick
+		if not nickname:
+			user = await bot.fetch_user(int(user_id))
+			nickname = user.name + '(real name)'
+		list_of_birthdays += f"User \"{nickname}\": {username}'s birthday is on {str(birthday.day).zfill(2)}/{str(birthday.month).zfill(2)}\n"
 
 	if list_of_birthdays != "":
 		await ctx.send(list_of_birthdays)
