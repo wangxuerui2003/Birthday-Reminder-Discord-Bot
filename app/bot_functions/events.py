@@ -6,7 +6,7 @@ async def on_ready():
     print(f"Bot logged in as {bot.user}!")
     background_check_birthday.start()
     background_delete_expired_threads.start()
-    check_guilds.start()
+    background_check_guilds.start()
 
 
 @bot.event
@@ -20,7 +20,7 @@ async def on_command_error(ctx: commands.context.Context, error):
 
 @bot.event
 async def on_guild_join(guild: discord.Guild):
-    await service_in_new_server(guild, db)
+    await service_in_new_server(guild)
 
 
 @bot.event

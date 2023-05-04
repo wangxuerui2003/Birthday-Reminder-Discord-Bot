@@ -15,7 +15,13 @@ async def background_check_birthday():
         birthdays: List[tuple] = db.get_birthdays()
         channels = [bot.get_channel(int(channel_id)) for channel_id in channel_ids]
 
-        await check_birthday(birthdays, channels)
+        for user_id, username, birthday, server_id in birthdays:
+            channel_id_tuple = db.get_channelid_from_server(server_id)
+            if channel_id_tuple:
+                channel_id = channel_id_tuple[0]
+            channel = discord.utils.get(bot.get_all_channels(), id=int(channel_id))
+            await check_birthday(birthday, user_id, channel, username)
+
 
 
 @tasks.loop(hours=6)
@@ -26,19 +32,5 @@ async def background_delete_expired_threads():
 
 
 @tasks.loop(minutes=10)
-async def check_guilds():
-    global guild_ids
-
-    current_guilds = [guild for guild in bot.guilds]
-    current_guild_ids = [str(guild.id) for guild in current_guilds]
-
-    new_guilds = [guild for guild in current_guilds if str(guild.id) not in guild_ids]
-    if new_guilds:
-        for guild in new_guilds:
-            await service_in_new_server(guild, db)
-
-    removed_guild_ids = set(guild_ids) - set(current_guild_ids)
-    if removed_guild_ids:
-        for guild_id in removed_guild_ids:
-            db.delete_removed_servers_and_birthdays(guild_id)
-        guild_ids = current_guild_ids
+async def background_check_guilds():
+    await check_guilds()
