@@ -38,11 +38,11 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
 		try:
 			if self.answer.value.endswith('0000'): # Anonymous birthyear
 				birthday = datetime.datetime.strptime(self.answer.value[:5], '%d/%m').date()
-				if birthday.year >= datetime.datetime.now().year:
-					await interaction.response.send_message(f"Don't born so late bro.", ephemeral=True)
-					return
 			else:
 				birthday = datetime.datetime.strptime(self.answer.value, '%d/%m/%Y').date()
+			if birthday.year >= datetime.datetime.now().year:
+				await interaction.response.send_message(f"Don't born so late bro.", ephemeral=True)
+				return
 			username = self.username.value
 			# year_anonymous = [True, False][birthday.year == 0]
 			embed = discord.Embed(
