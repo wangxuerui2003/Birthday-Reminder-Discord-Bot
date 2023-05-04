@@ -3,6 +3,14 @@ A birthday reminder discord bot written in Python using the discord.py module
 
 <br>
 
+
+## Commands
+- !help
+- !list_birthdays List all birthdays in an embed.
+- !set_birthday Set your birthday (once only)
+
+<br>
+
 ## Environments
 1. Create a .env file in the /app directory
 2. Add your discord bot token and desired channel id named TOKEN and MEMES_API_KEY (see <a href="https://developers.giphy.com/" target="_blank">Giphy API</a>)
