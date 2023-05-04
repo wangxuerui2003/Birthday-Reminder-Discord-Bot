@@ -5,7 +5,7 @@ import pytz
 from discord.ext import commands
 from birthdaydb import BirthdayDB
 from typing import List
-from bot import bot
+from bot import bot, guild_ids, channel_ids
 from get_happybirthday_meme import get_random_birthday_meme
 from birthdaydb import db
 
@@ -46,42 +46,57 @@ def channels_only(channel_ids: List[str]):
 	
 	return commands.check(wrapper)
 
-async def create_birthday_channel(guild: discord.Guild) -> discord.TextChannel:
+async def create_birthday_category_and_channel(guild: discord.Guild) -> Coroutine[discord.TextChannel, None, None]:
+	category_name = 'activities'
+	birthday_category = discord.utils.get(guild.categories, name=category_name)
+	if not birthday_category:
+		birthday_category: discord.CategoryChannel = await guild.create_category(category_name)
 	channel_name = 'birthday-celebration'
-	birthday_channel: discord.TextChannel = discord.utils.get(guild.channels, name=channel_name)
+	birthday_channel: discord.TextChannel = discord.utils.get(birthday_category.channels, name=channel_name)
 	if not birthday_channel:
-		birthday_channel = await guild.create_text_channel(channel_name)
+		birthday_channel = await birthday_category.create_text_channel(channel_name)
 		await birthday_channel.send("The channel birthday-celebration has been created!")
 	return birthday_channel
 
 
-async def service_in_new_server(guild: discord.Guild, db: BirthdayDB):
-	birthday_channel = await create_birthday_channel(guild)
-	db.add_new_server(guild.id, birthday_channel.id)
-	await birthday_channel.send(f'Thank you for adding me to your server, {guild.name}! To get started, try using the `!help` command.')
+async def service_in_new_server(guild: discord.Guild) -> Coroutine:
+	birthday_channel = await create_birthday_category_and_channel(guild)
+	if str(guild.id) not in guild_ids:
+		guild_ids.append(str(guild.id))
+		channel_ids.append(str(birthday_channel.id))
+		db.add_new_server(guild.id, birthday_channel.id)
+		await birthday_channel.send(f'Thank you for adding me to your server, {guild.name}! To get started, try using the `!help` command.')
 
 
-async def check_birthday(birthdays, channels) -> Coroutine:
-    """
-        Check all the birthdays for birthday today and tomorrow.
-    """
+async def check_birthday(birthday, user_id, channel, username) -> Coroutine:
+	if today_birthday(birthday):
+		user = await bot.fetch_user(int(user_id))
+		message = await channel.send(f"Happy Birthday {username}! {user.mention}")
+		meme_url = get_random_birthday_meme()
+		if meme_url:
+			embed_meme = discord.Embed(title="Happy Birthday!")
+			embed_meme.set_image(url=meme_url)
+			await channel.send(embed=embed_meme)
+		await create_thread(message, username)
+	elif tmr_birthday(birthday):
+		user = await bot.fetch_user(int(user_id))
+		message = await channel.send(f"Remember tomorrow is your birthday {username}! {user.mention}")
+		await create_thread(message, username)
 
-    for user_id, username, birthday, server_id in birthdays:
-        channel_id_tuple = db.get_channelid_from_server(server_id)
-        if channel_id_tuple:
-            channel_id = channel_id_tuple[0]
-        channel = discord.utils.get(bot.get_all_channels(), id=int(channel_id))
-        if today_birthday(birthday):
-            user = await bot.fetch_user(int(user_id))
-            message = await channel.send(f"Happy Birthday {username}! {user.mention}")
-            meme_url = get_random_birthday_meme()
-            if meme_url:
-                embed_meme = discord.Embed(title="Happy Birthday!")
-                embed_meme.set_image(url=meme_url)
-                await channel.send(embed=embed_meme)
-            await create_thread(message, username)
-        elif tmr_birthday(birthday):
-            user = await bot.fetch_user(int(user_id))
-            message = await channel.send(f"Rememeber tomorrow is your birthday {username}! {user.mention}")
-            await create_thread(message, username)
+async def check_guilds() -> Coroutine:
+	global guild_ids
 
+	current_guilds = [guild for guild in bot.guilds]
+	current_guild_ids = [str(guild.id) for guild in current_guilds]
+
+	new_guilds = [guild for guild in current_guilds if str(guild.id) not in guild_ids]
+	if new_guilds:
+		for guild in new_guilds:
+			await service_in_new_server(guild)
+		guild_ids = current_guild_ids
+
+	removed_guild_ids = set(guild_ids) - set(current_guild_ids)
+	if removed_guild_ids:
+		for guild_id in removed_guild_ids:
+			db.delete_removed_servers_and_birthdays(guild_id)
+		guild_ids = current_guild_ids
