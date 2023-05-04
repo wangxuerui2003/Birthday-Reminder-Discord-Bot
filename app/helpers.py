@@ -33,6 +33,8 @@ async def delete_expired_threads(birthdays: List[tuple], channels: List[discord.
 		return
 	threshold_time: datetime.date = (datetime.datetime.now() - datetime.timedelta(hours=48)).replace(tzinfo=pytz.timezone('UTC'))
 	for channel in channels:
+		if not channel:
+			continue
 		threads: List[discord.Thread] = channel.threads
 		for thread in threads:
 			if thread.created_at < threshold_time:
