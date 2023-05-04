@@ -112,13 +112,13 @@ class BirthdayDB():
 		self.session = self.SessionObj()
 		return self.session.execute(text("SELECT channel_id FROM Servers WHERE server_id = :server_id"), {'server_id': server_id}).fetchone()
 	
-	def get_birthdays_in_server(self, server_id: int):
+	def get_sorted_birthdays_in_server(self, server_id: int) -> List[tuple]:
 		"""
 			Get all birthdays in a specific server.
 		"""
 		self.session.expire_all()
 		self.session = self.SessionObj()
-		return self.session.execute(text("SELECT * FROM Birthdays WHERE server_id = :server_id"), {'server_id': server_id}).fetchall()
+		return self.session.execute(text("SELECT * FROM Birthdays WHERE server_id = :server_id ORDER BY birthday"), {'server_id': server_id}).fetchall()
 	
 	def add_new_server(self, server_id: str, channel_id: str):
 		"""
