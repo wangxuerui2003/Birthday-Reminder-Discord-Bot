@@ -69,7 +69,7 @@ class BirthdayDB():
 			self.db_conn_success: bool = False
 
 
-	def store_birthday(self, username: str, birthday: datetime.date, user: str, server_id: int) -> None:
+	def store_birthday(self, username: str, birthday: datetime.date, user: discord.User, server_id: int) -> None:
 		"""
 			Insert a row of birthday info into the database if the user haven't set his/her birthday yet.
 		"""
@@ -112,7 +112,15 @@ class BirthdayDB():
 		self.session = self.SessionObj()
 		return self.session.execute(text("SELECT channel_id FROM Servers WHERE server_id = :server_id"), {'server_id': server_id}).fetchone()
 	
-	def create_new_server(self, server_id: str, channel_id: str):
+	def get_birthdays_in_server(self, server_id: int):
+		"""
+			Get all birthdays in a specific server.
+		"""
+		self.session.expire_all()
+		self.session = self.SessionObj()
+		return self.session.execute(text("SELECT * FROM Birthdays WHERE server_id = :server_id"), {'server_id': server_id}).fetchall()
+	
+	def add_new_server(self, server_id: str, channel_id: str):
 		"""
 			Insert a new row of server_id and channel_id to the Servers table.
 		"""
@@ -121,6 +129,9 @@ class BirthdayDB():
 		self.session.commit()
 
 	def delete_removed_servers_and_birthdays(self, server_id: int):
+		"""
+			If got kicked or left a server then remove all the related info.
+		"""
 		self.session.execute(text("DELETE FROM Servers WHERE server_id = :server_id"), {'server_id': server_id})
 		self.session.execute(text("DELETE FROM Birthdays WHERE server_id = :server_id"), {'server_id': server_id})
 		self.session.commit()
