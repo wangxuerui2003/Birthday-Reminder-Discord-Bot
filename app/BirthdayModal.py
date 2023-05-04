@@ -4,6 +4,7 @@ from discord.interactions import Interaction
 import datetime
 from typing import Coroutine
 from birthdaydb import db
+from helpers import check_birthday
 
 class BirthdayModal(Modal, title="Birthday Reminder"):
 	'''
@@ -50,5 +51,6 @@ class BirthdayModal(Modal, title="Birthday Reminder"):
 							icon_url=interaction.user.avatar)
 			db.store_birthday(username, birthday, interaction.user, interaction.guild.id)
 			await interaction.response.send_message(embed=embed)
+			await check_birthday(birthday, interaction.user.id, interaction.channel, username)
 		except ValueError:
 			await interaction.response.send_message(f"{interaction.user.mention} Invalid birthday format!", ephemeral=True)
