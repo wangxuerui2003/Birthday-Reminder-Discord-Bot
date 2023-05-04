@@ -5,7 +5,7 @@ A birthday reminder discord bot written in Python using the discord.py module
 
 ## Environments
 1. Create a .env file in the /app directory
-2. Add your discord bot token and desired channel id named TOKEN and MEMES_API_KEY (see [giphy api](https://developers.giphy.com/)){:target="_blank"}
+2. Add your discord bot token and desired channel id named TOKEN and MEMES_API_KEY (see <a href="https://developers.giphy.com/" target="_blank">Giphy API</a>)
 
 <br>
 
@@ -48,7 +48,7 @@ $ python main.py
 <br>
 
 ### Invite my bot to your server (Only the server that you are an admin of)
-#### Invite url: [Bot invitation](https://discord.com/api/oauth2/authorize?client_id=1099215833374408795&permissions=543313886288&scope=bot){:target="_blank"}
+#### Invite url: <a href="https://discord.com/api/oauth2/authorize?client_id=1099215833374408795&permissions=543313886288&scope=bot" target="_blank">Bot Invitation</a>
 
 <br>
 
