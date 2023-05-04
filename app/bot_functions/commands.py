@@ -28,14 +28,11 @@ async def list_birthdays(ctx: commands.context.Context):
 	"""
 		List all recorded birthdays.
 	"""
-
-	list_of_birthdays = ""
 	birthdays = db.get_sorted_birthdays_in_server(ctx.guild.id)
-
 	if not birthdays:
 		await ctx.send("No birthdays set yet.")
 		return
-	
+	embed = discord.Embed(title="Birthday List", color=0xff69b4)
 	for user_id, username, birthday, server_id in birthdays:
 		if ctx.guild.id != int(server_id):
 			continue
@@ -45,7 +42,7 @@ async def list_birthdays(ctx: commands.context.Context):
 		if not nickname:
 			user = await bot.fetch_user(int(user_id))
 			nickname = user.name + '(real name)'
-		list_of_birthdays += f"User \"{nickname}\": {username}'s birthday is on {str(birthday.day).zfill(2)}/{str(birthday.month).zfill(2)}\n"
+		strdate = convert_date_to_str(birthday)
+		embed.add_field(name=nickname, value=f"{username}'s birthday is on {strdate} \n", inline=False)
 
-	if list_of_birthdays != "":
-		await ctx.send(list_of_birthdays)
+	await ctx.send(embed=embed)

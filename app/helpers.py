@@ -102,3 +102,20 @@ async def check_guilds() -> Coroutine:
 		for guild_id in removed_guild_ids:
 			db.delete_removed_servers_and_birthdays(guild_id)
 		guild_ids = current_guild_ids
+
+def convert_date_to_str(date_obj: datetime.date) -> str:
+	month_name = date_obj.strftime('%B')
+	day = date_obj.day
+	if day in [1, 21, 31]:
+		suffix = 'st'
+	elif day in [2, 22]:
+		suffix = 'nd'
+	elif day in [3, 23]:
+		suffix = 'rd'
+	else:
+		suffix = 'th'
+
+	# Format the date as "Month day_suffix"
+	formatted_date = f"{month_name} {day}{suffix}"
+
+	return formatted_date
