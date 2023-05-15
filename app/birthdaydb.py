@@ -48,7 +48,7 @@ class BirthdayDB():
 				If credentials are wrong or mysql server doesn't exist, then put db_conn_success to False and main.py will exit the program.
 				If database doesn'e exist, then create the database in the mysql server.
 		"""
-		self.engine: sqlalchemy.Engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
+		self.engine: sqlalchemy.Engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}', pool_recycle=3600, pool_pre_ping=True)
 		try:
 			try:
 				self.con: sqlalchemy.Connection = self.engine.connect()
@@ -63,7 +63,7 @@ class BirthdayDB():
 				self.engine.dispose() # dispose the useless engine again
 
 				# create the final engine and connection
-				self.engine = self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}')
+				self.engine = self.engine = create_engine(f'mysql+mysqlconnector://{self.db_user}:{self.db_pwd}@{self.db_host}:{self.db_port}/{self.db_name}', pool_recycle=3600, pool_pre_ping=True)
 				self.con = self.engine.connect()
 		except InterfaceError as e:
 			self.db_conn_success: bool = False
